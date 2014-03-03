@@ -8,6 +8,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
@@ -22,6 +23,7 @@ public class BTRCMainActivity extends AndroidApplication {
     BluetoothRC mGame = BluetoothRC.getInstance();
 
 	private SensorEventListener mSl = new SensorEventListener() {
+		@SuppressWarnings("deprecation")
 		@Override
 		public void onSensorChanged(SensorEvent event) {
 
@@ -37,17 +39,41 @@ public class BTRCMainActivity extends AndroidApplication {
 				return;
 			}
 
-			if (mGravity != null && mMagnetic != null) {
-				mGame.setDirection(getDirection());
+			if (mGravity != null) {
+				if (mMagnetic != null) {
+
+					// Log.d("SensorEventListener", "tilt1 " + getDirection() + " degrees");
+					mGame.setDirection(getDirection());
+					
+				} else {
+					float[] adjustedValues = new float[3];
+
+					final int axisSwap[][] = {
+							{ 1, -1, 0, 1 }, // ROTATION_0
+							{ -1, -1, 1, 0 }, // ROTATION_90
+							{ -1, 1, 0, 1 }, // ROTATION_180
+							{ 1, 1, 1, 0 } }; // ROTATION_270
+
+					final int[] as = axisSwap[((WindowManager) getSystemService(WINDOW_SERVICE))
+							.getDefaultDisplay().getOrientation()];
+					
+					adjustedValues[0] = (float) as[0] * event.values[as[2]];
+					// adjustedValues[1] = (float) as[1] * event.values[ as[3] ];
+					// adjustedValues[2] = event.values[2];
+					
+					float tilt = adjustedValues[0] / SensorManager.GRAVITY_EARTH * 90;
+					// Log.d("SensorEventListener", "tilt2 " + tilt + " degrees");
+					mGame.setDirection(tilt);
+				}
 			}
 		}
 
 		@Override
-		public void onAccuracyChanged(Sensor arg0, int arg1) {
-			// TODO Auto-generated method stub
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+			// Log.d("SensorEventListener", "onAccuracyChanged: " + sensor + ", accuracy: " + accuracy);
 		}
 	};
-
+	
 	private float getDirection()
     {
         float[] temp = new float[9];
@@ -72,8 +98,8 @@ public class BTRCMainActivity extends AndroidApplication {
         }
 
         return values[0];      
-    }	
-
+    }
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -107,10 +133,13 @@ public class BTRCMainActivity extends AndroidApplication {
 
 		Handler handler = new Handler();
 		
+		// Log.d("SensorEventListener","Sensor.TYPE_ACCELEROMETER " + accel);
+		// Log.d("SensorEventListener","Sensor.TYPE_MAGNETIC_FIELD " + magnet);
+		
 		sensorManager.registerListener(mSl, accel,
-				SensorManager.SENSOR_DELAY_FASTEST, handler);
+				SensorManager.SENSOR_DELAY_GAME, handler);
 		sensorManager.registerListener(mSl, magnet,
-				SensorManager.SENSOR_DELAY_FASTEST, handler);
+				SensorManager.SENSOR_DELAY_GAME, handler);
 	}
 
 	@Override
