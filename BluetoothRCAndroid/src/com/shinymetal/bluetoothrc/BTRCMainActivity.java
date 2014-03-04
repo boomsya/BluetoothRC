@@ -14,6 +14,8 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
+import android.bluetooth.*;
+import android.content.Intent;
 
 public class BTRCMainActivity extends AndroidApplication {
 	
@@ -21,7 +23,10 @@ public class BTRCMainActivity extends AndroidApplication {
     private float[] mMagnetic;
 
     BluetoothRC mGame = BluetoothRC.getInstance();
-
+    
+    BluetoothAdapter mBluetoothAdapter;
+    static final int REQUEST_ENABLE_BT = 0x100;
+    
 	private SensorEventListener mSl = new SensorEventListener() {
 		@SuppressWarnings("deprecation")
 		@Override
@@ -140,6 +145,17 @@ public class BTRCMainActivity extends AndroidApplication {
 				SensorManager.SENSOR_DELAY_GAME, handler);
 		sensorManager.registerListener(mSl, magnet,
 				SensorManager.SENSOR_DELAY_GAME, handler);
+		
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+		if (mBluetoothAdapter != null) {
+			if (!mBluetoothAdapter.isEnabled()) {
+				Intent enableIntent = new Intent(
+						BluetoothAdapter.ACTION_REQUEST_ENABLE);
+				startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+			} else {
+			}
+		}
 	}
 
 	@Override
