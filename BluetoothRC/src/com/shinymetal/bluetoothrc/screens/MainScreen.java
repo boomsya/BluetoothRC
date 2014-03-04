@@ -50,10 +50,6 @@ public class MainScreen
 				Gdx.app.log( BluetoothRC.LOG, "RIGHT pressed");
 				BluetoothRC.getInstance().setDirection(BluetoothRC.getInstance().getDirection() + 2);
 				return true;
-				
-			case Input.Keys.A:
-				Gdx.app.log( BluetoothRC.LOG, "A pressed");
-				return true;
 			}
 			return false;
 		}
