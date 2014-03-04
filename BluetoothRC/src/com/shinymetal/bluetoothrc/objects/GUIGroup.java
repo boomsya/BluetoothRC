@@ -21,6 +21,7 @@ public class GUIGroup
     
     private Actor spdHandle;
     private Actor wheelHandle;
+    private Actor stopBtn;
     
     private float wheelRotation = BluetoothRC.getInstance().getDirection();
     private int throttle = 0;
@@ -101,6 +102,10 @@ public class GUIGroup
 
 		
 		this.addActor(wheelHandle);
+		
+		stopBtn = new Image(new Texture(Gdx.files.internal("graphics/stopBtn.png")));
+		stopBtn.setPosition(Gdx.graphics.getWidth() - stopBtn.getWidth(), Gdx.graphics.getHeight() - stopBtn.getHeight());
+		this.addActor(stopBtn);
 	}
 		
 	@Override
