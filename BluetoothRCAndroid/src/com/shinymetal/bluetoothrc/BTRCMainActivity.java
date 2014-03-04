@@ -22,10 +22,13 @@ public class BTRCMainActivity extends AndroidApplication {
     private float[] mGravity;
     private float[] mMagnetic;
 
-    BluetoothRC mGame = BluetoothRC.getInstance();
+    private BluetoothRC mGame = BluetoothRC.getInstance();
     
-    BluetoothAdapter mBluetoothAdapter;
-    static final int REQUEST_ENABLE_BT = 0x100;
+    private BluetoothAdapter mBluetoothAdapter;    
+    private static final int REQUEST_ENABLE_BT = 0x100;
+    
+    private static final float kFilteringFactor = 0.01f;
+    private float accel[] = {0, 0, 0}; 
     
 	private SensorEventListener mSl = new SensorEventListener() {
 		@SuppressWarnings("deprecation")
@@ -62,11 +65,18 @@ public class BTRCMainActivity extends AndroidApplication {
 					final int[] as = axisSwap[((WindowManager) getSystemService(WINDOW_SERVICE))
 							.getDefaultDisplay().getOrientation()];
 					
+					accel[0] = event.values[as[2]] * kFilteringFactor + accel[0] * (1.0f - kFilteringFactor);
+					// accel[1] = event.values[as[3]] * kFilteringFactor + accel[1] * (1.0f - kFilteringFactor);
+					// accel[2] = event.values[2] * kFilteringFactor + accel[2] * (1.0f - kFilteringFactor);
+					
 					adjustedValues[0] = (float) as[0] * event.values[as[2]];
-					// adjustedValues[1] = (float) as[1] * event.values[ as[3] ];
+					// adjustedValues[1] = (float) as[1] * event.values[as[3]];
 					// adjustedValues[2] = event.values[2];
 					
-					float tilt = adjustedValues[0] / SensorManager.GRAVITY_EARTH * 90;
+					float tilt = adjustedValues[0] / SensorManager.GRAVITY_EARTH * 90;					
+					// accel[0] = tilt * kFilteringFactor + accel[0] * (1.0f - kFilteringFactor);
+					// tilt -= accel[0]; 
+					
 					// Log.d("SensorEventListener", "tilt2 " + tilt + " degrees");
 					mGame.setDirection(tilt);
 				}

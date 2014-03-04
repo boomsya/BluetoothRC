@@ -25,8 +25,8 @@ public class GUIGroup
     private float wheelRotation = BluetoothRC.getInstance().getDirection();
     private int throttle = 0;
     
-    static final int SPD_LOW_MARK = 10;
-    static final int SPD_HIGH_MARK = 90;
+    static final int SPD_LOW_MARK = 25;
+    static final int SPD_HIGH_MARK = 77;
     
     static final int SPD_MAX_FWD = 9;
     static final int SPD_MAX_RWD = 4;
@@ -34,17 +34,21 @@ public class GUIGroup
 	public GUIGroup () {
 		shapeRenderer = new ShapeRenderer ();
 
-		spdHandle = new Image(new Texture(Gdx.files.internal("sphere.png")));
+		Actor background = new Image(new Texture(Gdx.files.internal("graphics/background.png")));
+		background.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		this.addActor(background);
+		
+		spdHandle = new Image(new Texture(Gdx.files.internal("graphics/handle.png")));
 
 		// TODO: Remove once we have final image
-		spdHandle.setSize(spdHandle.getWidth(), spdHandle.getHeight() / 2);
+		spdHandle.setSize(Gdx.graphics.getWidth() / 10, Gdx.graphics.getHeight() / 10);
 		
 		float zeroPos = Gdx.graphics.getHeight() * SPD_LOW_MARK / 100
 				+ Gdx.graphics.getHeight() * (SPD_HIGH_MARK - SPD_LOW_MARK) / 100
 				* (SPD_MAX_RWD + 1) / (SPD_MAX_FWD + SPD_MAX_RWD + 1)
 				- spdHandle.getHeight() / 2;
 		
-		spdHandle.setPosition(Gdx.graphics.getWidth() / 100 * 17 - spdHandle.getWidth(), zeroPos);
+		spdHandle.setPosition((int) (Gdx.graphics.getWidth() * 13.8 / 100 - spdHandle.getWidth() / 2), zeroPos);
 		spdHandle.addListener(new DragListener() {
             public void touchDragged (InputEvent event, float x, float y, int pointer) {
             	
@@ -69,11 +73,11 @@ public class GUIGroup
 		
 		this.addActor(spdHandle);
 		
-		wheelHandle = new Image(new Texture(Gdx.files.internal("sphere.png")));
+		wheelHandle = new Image(new Texture(Gdx.files.internal("graphics/volant.png")));
 
 		// TODO: Remove once we have final image
-		wheelHandle.setSize(Gdx.graphics.getWidth() * 65 / 100, Gdx.graphics.getWidth() * 65 / 100);
-		wheelHandle.setPosition(Gdx.graphics.getWidth() / 10 * 3, wheelHandle.getHeight() / -10 * 4 );
+		wheelHandle.setSize(Gdx.graphics.getWidth() * 75 / 100, Gdx.graphics.getWidth() * 75 / 100);
+		wheelHandle.setPosition(Gdx.graphics.getWidth() * 25 / 100 , wheelHandle.getHeight() / -10 * 4 );
 		wheelHandle.setOrigin(wheelHandle.getWidth() / 2, wheelHandle.getHeight() / 2);
 		wheelHandle.addListener(new DragListener() {
             public void touchDragged (InputEvent event, float x, float y, int pointer) {
@@ -111,8 +115,8 @@ public class GUIGroup
 		}
 		
 		// centering spring
-		angle += angle > 0 ? -0.1 : 0.1;
-		BluetoothRC.getInstance().setDirection(angle);
+		// angle += angle > 0 ? -0.1 : 0.1;
+		// BluetoothRC.getInstance().setDirection(angle);
 		
 		super.act( delta );		
 	}
