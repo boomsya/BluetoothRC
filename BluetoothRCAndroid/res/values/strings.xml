@@ -3,5 +3,7 @@
 
     <string name="app_name">BluetoothRCAndroid</string>
     <string name="action_select">Select Car/Robot</string>
+    <string name="label_submit">Select</string>
+    <string name="label_cancel">Cancel</string>
 
 </resources>

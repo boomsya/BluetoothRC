@@ -3,6 +3,7 @@ package com.shinymetal.bluetoothrc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.UUID;
@@ -17,14 +18,21 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.bluetooth.*;
+import android.content.DialogInterface;
 import android.content.Intent;
 
 public class BTRCMainActivity extends AndroidApplication {
@@ -45,7 +53,7 @@ public class BTRCMainActivity extends AndroidApplication {
     
     private static final int REQUEST_ENABLE_BT = 0x100;
     
-    // TODO: replace with actual HC-06 uuid
+    // TODO: replace with actual HC-06 uuid (Bluetooth Serial SPP: 00001101-0000-1000-8000-00805f9b34fb)
     private static final UUID hc06uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     
     private static final float kFilteringFactor = 0.01f;
@@ -206,19 +214,48 @@ public class BTRCMainActivity extends AndroidApplication {
 		};
 	}
 
+	// @SuppressLint("NewApi")
 	private BluetoothSocket createBluetoothSocket(BluetoothDevice device)
 			throws IOException {
+		
+		// for (int i=0; i<device.getUuids().length; i++)
+		//	Log.d("createBluetoothSocket", i + ": " + device.getUuids()[i].toString());
+		
 		if (Build.VERSION.SDK_INT >= 10) {
 			try {
 				final Method m = device.getClass().getMethod(
 						"createInsecureRfcommSocketToServiceRecord",
 						new Class[] { UUID.class });
 				return (BluetoothSocket) m.invoke(device, hc06uuid);
+				
+//				final Method m = device.getClass().getMethod(
+//						"createRfcommSocket", new Class[] { int.class });
+//				return (BluetoothSocket) m.invoke(device, 1);
+				    
 			} catch (Exception e) {
 				Log.e("createBluetoothSocket",
 						"Could not create Insecure RFComm Connection", e);
 			}
 		}
+//		byte[] ar = new byte[] { 0x31, 0x32, 0x33, 0x34 };
+//		Method m2 = null;
+//		try {
+//			m2 = device.getClass().getMethod("setPin",
+//					new Class[] { byte[].class });
+//			m2.invoke(device, ar);
+//		} catch (IllegalAccessException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (IllegalArgumentException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (InvocationTargetException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (NoSuchMethodException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		return device.createRfcommSocketToServiceRecord(hc06uuid);
 	}
 	
@@ -245,10 +282,7 @@ public class BTRCMainActivity extends AndroidApplication {
     	super.onPause();
     }
     
-	private void connect(String address) {
-
-		// Set up a pointer to the remote node using it's address.
-		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+	private void connect(BluetoothDevice device) {
 
 		// Two things are needed to make a connection:
 		// A MAC address, which we got above.
@@ -259,9 +293,8 @@ public class BTRCMainActivity extends AndroidApplication {
 			mBluetoothSocket = createBluetoothSocket(device);
 		} catch (IOException e) {
 			// TODO
-			// errorExit("Fatal Error",
-			// "In onResume() and socket create failed: " + e.getMessage() +
-			// ".");
+			Log.e("Fatal Error",
+					"In onResume() and socket create failed: " + e.getMessage()	+ ".");
 		}
 
 		// Discovery is resource intensive. Make sure it isn't going on
@@ -269,10 +302,10 @@ public class BTRCMainActivity extends AndroidApplication {
 		mBluetoothAdapter.cancelDiscovery();
 
 		// Establish the connection. This will block until it connects.
-		// Log.d(TAG, "...Connecting...");
+		Log.d("connect", "...Connecting...");
 		try {
 			mBluetoothSocket.connect();
-			// Log.d(TAG, "....Connection ok...");
+			Log.d("connect", "....Connection ok...");
 		} catch (IOException e) {
 			try {
 				mBluetoothSocket.close();
@@ -285,7 +318,7 @@ public class BTRCMainActivity extends AndroidApplication {
 		}
 
 		// Create a data stream so we can talk to server.
-		// Log.d(TAG, "...Create Socket...");
+		Log.d("connect", "...Create Socket...");
 
 		mConnectedThread = new ConnectedThread(mBluetoothSocket);
 		mConnectedThread.start();
@@ -312,6 +345,42 @@ public class BTRCMainActivity extends AndroidApplication {
 		switch (item.getItemId()) {
 		case R.id.action_select:
 			// TODO: new dialog with device selection, call connect() if selected
+			
+			LayoutInflater inflater = (LayoutInflater) getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
+			View layout = inflater.inflate(R.layout.device_dialog, null);			
+			DeviceListAdapter da = new DeviceListAdapter(mFoundDevices);
+			
+		    AlertDialog.Builder builder = new AlertDialog.Builder(BTRCMainActivity.this);
+		    builder.setView(layout);
+		    
+			final ListView lView = (ListView) layout.findViewById(R.id.deviceList);
+			final AlertDialog alertDialog = builder.create();
+			
+			lView.setAdapter(da);
+			lView.setOnItemClickListener(new OnItemClickListener() {
+
+				@Override
+				public void onItemClick(AdapterView<?> parent, View view,
+						int position, long id) {
+
+					BluetoothDevice d = (BluetoothDevice) lView.getItemAtPosition(position);
+					
+					connect(d);
+					alertDialog.dismiss();
+				}
+			});
+
+		    alertDialog.setTitle(getString(R.string.action_select));
+		    alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, getString(R.string.label_cancel),
+					new DialogInterface.OnClickListener() {
+	
+						public void onClick(final DialogInterface dialog,
+								final int which) {
+
+						}
+					});
+
+		    alertDialog.show();			
 			return true;
 		default:
 		}
@@ -323,20 +392,38 @@ public class BTRCMainActivity extends AndroidApplication {
 		private final InputStream mmInStream;
 		private final OutputStream mmOutStream;
 
+		@SuppressLint("NewApi")
 		public ConnectedThread(BluetoothSocket socket) {
+			
 			InputStream tmpIn = null;
 			OutputStream tmpOut = null;
 
+			Log.d("Thread.run()", "socket is connected: " + socket.isConnected());
 			// Get the input and output streams, using temp objects because
 			// member streams are final
 			try {
 				tmpIn = socket.getInputStream();
 				tmpOut = socket.getOutputStream();
 			} catch (IOException e) {
+				
+				Log.e("Thread.run()", "streams: " + e.toString());
 			}
 
 			mmInStream = tmpIn;
 			mmOutStream = tmpOut;
+			
+			Log.d("Thread.run()", "... try write ...");
+			
+			// TODO: remove later
+			byte[] msgBuffer = new String("L6R6L0").getBytes();
+			try {
+				mmOutStream.write(msgBuffer);
+				mmOutStream.flush();
+			} catch (IOException e) {
+				Log.e("Thread.run()", "write(): " + e.toString());
+			}
+			
+			Log.d("Thread.run()", "... done ...");
 		}
 
 		public void run() {
