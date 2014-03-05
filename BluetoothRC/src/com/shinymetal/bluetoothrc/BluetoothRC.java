@@ -14,7 +14,9 @@ public class BluetoothRC extends Game {
 	
 	private static volatile BluetoothRC instance;
 	
+	private int mThrottle = 0;
     private float mDirection = (float) 0.0;
+    private boolean mWheelIsDragged = false;
     
 	public void setDirection(float direction) {
 		
@@ -26,6 +28,12 @@ public class BluetoothRC extends Game {
 	}
 	
 	public float getDirection() { return mDirection; }
+	
+	public void setIsWheelDragged (boolean isDragged) { mWheelIsDragged = isDragged; }
+	public boolean isWheelDragged () { return mWheelIsDragged; }
+	
+	public void setThrottle(int throttle) { mThrottle = throttle; }
+	public int getThrottle() { return mThrottle; }
 	
     // constant useful for logging
     public static final String LOG = BluetoothRC.class.getSimpleName();

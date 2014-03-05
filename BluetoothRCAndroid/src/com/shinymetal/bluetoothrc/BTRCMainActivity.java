@@ -41,6 +41,7 @@ public class BTRCMainActivity extends AndroidApplication {
 				mGravity = event.values.clone();
 				break;
 			case Sensor.TYPE_MAGNETIC_FIELD:
+				// Log.d("SensorEventListener", "TYPE_MAGNETIC_FIELD");
 				mMagnetic = event.values.clone();
 				break;
 			default:
@@ -51,7 +52,8 @@ public class BTRCMainActivity extends AndroidApplication {
 				if (mMagnetic != null) {
 
 					// Log.d("SensorEventListener", "tilt1 " + getDirection() + " degrees");
-					mGame.setDirection(getDirection());
+					if (!mGame.isWheelDragged())
+						mGame.setDirection(getDirection());
 					
 				} else {
 					float[] adjustedValues = new float[3];
@@ -78,7 +80,10 @@ public class BTRCMainActivity extends AndroidApplication {
 					// tilt -= accel[0]; 
 					
 					// Log.d("SensorEventListener", "tilt2 " + tilt + " degrees");
-					mGame.setDirection(tilt);
+					
+					// TODO: Why do I need offset here?
+					if (!mGame.isWheelDragged())
+						mGame.setDirection(tilt /* - 4*/);
 				}
 			}
 		}
@@ -141,23 +146,19 @@ public class BTRCMainActivity extends AndroidApplication {
 		setContentView(layout);
 
 		SensorManager sensorManager = (SensorManager) getSystemService(BTRCMainActivity.SENSOR_SERVICE);
-		Sensor accel = sensorManager
-				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		Sensor magnet = sensorManager
-				.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-
-		Handler handler = new Handler();
+		// Log.d("SensorEventListener", "Sensor.TYPE_ACCELEROMETER " + accel);
+		// Log.d("SensorEventListener", "Sensor.TYPE_MAGNETIC_FIELD " + magnet);
 		
-		// Log.d("SensorEventListener","Sensor.TYPE_ACCELEROMETER " + accel);
-		// Log.d("SensorEventListener","Sensor.TYPE_MAGNETIC_FIELD " + magnet);
-		
-		sensorManager.registerListener(mSl, accel,
-				SensorManager.SENSOR_DELAY_GAME, handler);
-		sensorManager.registerListener(mSl, magnet,
-				SensorManager.SENSOR_DELAY_GAME, handler);
+		sensorManager.registerListener(mSl,
+				sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+				SensorManager.SENSOR_DELAY_GAME);
+		sensorManager.registerListener(mSl,
+				sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
+				SensorManager.SENSOR_DELAY_GAME);
 		
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
+		// TODO: move to menu options
 		if (mBluetoothAdapter != null) {
 			if (!mBluetoothAdapter.isEnabled()) {
 				Intent enableIntent = new Intent(

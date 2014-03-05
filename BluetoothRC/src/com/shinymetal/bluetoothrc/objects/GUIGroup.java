@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.shinymetal.bluetoothrc.BluetoothRC;
 
 public class GUIGroup
@@ -40,23 +41,35 @@ public class GUIGroup
 		this.addActor(background);
 		
 		spdHandle = new Image(new Texture(Gdx.files.internal("graphics/handle.png")));
-
-		// TODO: Remove once we have final image
 		spdHandle.setSize(Gdx.graphics.getWidth() / 10, Gdx.graphics.getHeight() / 10);
 		
-		float zeroPos = Gdx.graphics.getHeight() * SPD_LOW_MARK / 100
+		final Actor spdHandleHole = new Actor();
+		spdHandleHole.setSize(spdHandle.getWidth() * 15 / 10, Gdx.graphics.getHeight() * (SPD_HIGH_MARK - SPD_LOW_MARK));
+		spdHandleHole.setPosition( (float) (Gdx.graphics.getWidth() * 13.8 / 100 - spdHandleHole
+						.getWidth() / 2), Gdx.graphics.getHeight() * SPD_LOW_MARK / 100);
+		
+		final float zeroPos = Gdx.graphics.getHeight() * SPD_LOW_MARK / 100
 				+ Gdx.graphics.getHeight() * (SPD_HIGH_MARK - SPD_LOW_MARK) / 100
 				* (SPD_MAX_RWD + 1) / (SPD_MAX_FWD + SPD_MAX_RWD + 1)
 				- spdHandle.getHeight() / 2;
 		
 		spdHandle.setPosition((int) (Gdx.graphics.getWidth() * 13.8 / 100 - spdHandle.getWidth() / 2), zeroPos);
-		spdHandle.addListener(new DragListener() {
-            public void touchDragged (InputEvent event, float x, float y, int pointer) {
-            	
+		
+		spdHandleHole.addListener(new DragListener() {
+			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+
+				touchDragged (event, x, y, pointer);
+				return super.touchDown(event, x, y, pointer, button);
+			}
+			
+			public void touchDragged (InputEvent event, float x, float y, int pointer) {
+
 				float height = Gdx.graphics.getHeight();
 				float lowMark = height * SPD_LOW_MARK / 100;
 				float highMark = height * SPD_HIGH_MARK / 100;
-				float spdY = spdHandle.getY() + y - getTouchDownY();
+				Vector2 coords = new Vector2(x, y);
+				spdHandleHole.localToStageCoordinates(coords);
+				float spdY = coords.y - spdHandle.getHeight() / 2;
 
 				if (spdY < lowMark - spdHandle.getHeight() / 2)
 					spdY = lowMark - spdHandle.getHeight() / 2;
@@ -68,12 +81,14 @@ public class GUIGroup
 				throttle = (int) ((spdY + spdHandle.getHeight() / 2 - lowMark)
 						/ (highMark - lowMark)
 						* (SPD_MAX_FWD + SPD_MAX_RWD + 1) - SPD_MAX_RWD - 1);
-				Gdx.app.log(BluetoothRC.LOG, "throttle: " + throttle);
-            }
-        });		
+				
+				BluetoothRC.getInstance().setThrottle(throttle);				
+			}
+		});
 		
 		this.addActor(spdHandle);
-		
+		this.addActor(spdHandleHole);
+	
 		wheelHandle = new Image(new Texture(Gdx.files.internal("graphics/volant.png")));
 
 		// TODO: Remove once we have final image
@@ -81,6 +96,19 @@ public class GUIGroup
 		wheelHandle.setPosition(Gdx.graphics.getWidth() * 25 / 100 , wheelHandle.getHeight() / -10 * 4 );
 		wheelHandle.setOrigin(wheelHandle.getWidth() / 2, wheelHandle.getHeight() / 2);
 		wheelHandle.addListener(new DragListener() {
+			
+			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+				
+				BluetoothRC.getInstance().setIsWheelDragged(true);
+				return super.touchDown(event, x, y, pointer, button);
+			}
+			
+			public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+				
+				BluetoothRC.getInstance().setIsWheelDragged(false);
+				super.touchUp(event, x, y, pointer, button);
+			}
+			
             public void touchDragged (InputEvent event, float x, float y, int pointer) {
             	
             	Vector2 center = new Vector2(wheelHandle.getWidth()/2, wheelHandle.getHeight()/2);
@@ -96,15 +124,23 @@ public class GUIGroup
 						- (Math.atan2(touched.x - center.x, touched.y - center.y) * 180.0d / Math.PI));
 				
             	BluetoothRC.getInstance().setDirection(BluetoothRC.getInstance().getDirection() + degrees);            	
-            	Gdx.app.log(BluetoothRC.LOG, "wheelHandle DragListener: x" + x + ", y " + y + " degrees " + degrees);
+            	// Gdx.app.log(BluetoothRC.LOG, "wheelHandle DragListener: x" + x + ", y " + y + " degrees " + degrees);
             }
         });		
 
 		
 		this.addActor(wheelHandle);
 		
-		stopBtn = new Image(new Texture(Gdx.files.internal("graphics/stopBtn.png")));
+		stopBtn = new Image(new Texture(Gdx.files.internal("graphics/stopbtn.png")));
 		stopBtn.setPosition(Gdx.graphics.getWidth() - stopBtn.getWidth(), Gdx.graphics.getHeight() - stopBtn.getHeight());
+		stopBtn.addListener(new InputListener() {
+			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+				
+				spdHandle.setPosition(spdHandle.getX(), (int) zeroPos);
+				BluetoothRC.getInstance().setThrottle(0);
+				return super.touchDown(event, x, y, pointer, button);
+			}
+		});
 		this.addActor(stopBtn);
 	}
 		
