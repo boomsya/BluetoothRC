@@ -33,7 +33,7 @@ public class BluetoothRCDesktop {
         String[] args )
     {
         // define the window's title
-        String title = "LivingRoomRobot Desktop";
+        String title = "Bluetooth RC";
 
         // define the window's size
         int width = 960, height = 480;

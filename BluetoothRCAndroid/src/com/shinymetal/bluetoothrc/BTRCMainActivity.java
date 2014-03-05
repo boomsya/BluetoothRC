@@ -1,19 +1,29 @@
 package com.shinymetal.bluetoothrc;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
+import java.util.Set;
+import java.util.UUID;
+
 import com.badlogic.gdx.backends.android.AndroidApplication;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 import android.bluetooth.*;
 import android.content.Intent;
 
@@ -24,8 +34,19 @@ public class BTRCMainActivity extends AndroidApplication {
 
     private BluetoothRC mGame = BluetoothRC.getInstance();
     
-    private BluetoothAdapter mBluetoothAdapter;    
+    private BluetoothAdapter mBluetoothAdapter;  
+    private BluetoothSocket mBluetoothSocket = null;
+    private ConnectedThread mConnectedThread = null;
+    private Set<BluetoothDevice> mFoundDevices;
+    
+    private static final int RECEIVE_MESSAGE = 1;        // Status  for Handler
+    private Handler mHandler;
+    private StringBuilder mStringBuilder = new StringBuilder();
+    
     private static final int REQUEST_ENABLE_BT = 0x100;
+    
+    // TODO: replace with actual HC-06 uuid
+    private static final UUID hc06uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     
     private static final float kFilteringFactor = 0.01f;
     private float accel[] = {0, 0, 0}; 
@@ -157,6 +178,52 @@ public class BTRCMainActivity extends AndroidApplication {
 				SensorManager.SENSOR_DELAY_GAME);
 		
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		if (mBluetoothAdapter == null) {
+			Toast.makeText(this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+			finish();
+			return;
+		}
+		
+		mHandler = new Handler() {
+			public void handleMessage(android.os.Message msg) {
+				switch (msg.what) {
+				case RECEIVE_MESSAGE: // if receive massage
+					byte[] readBuf = (byte[]) msg.obj;
+					String strIncom = new String(readBuf, 0, msg.arg1); 
+					mStringBuilder.append(strIncom); // append string
+					int endOfLineIndex = mStringBuilder.indexOf("\n"); // determine the
+															// end-of-line
+					if (endOfLineIndex > 0) { // if end-of-line,
+						String sbprint = mStringBuilder.substring(0, endOfLineIndex); // extract
+																			// string
+						mStringBuilder.delete(0, mStringBuilder.length()); // and clear
+
+						// TODO: use text from Arduino
+					}
+					break;
+				}
+			};
+		};
+	}
+
+	private BluetoothSocket createBluetoothSocket(BluetoothDevice device)
+			throws IOException {
+		if (Build.VERSION.SDK_INT >= 10) {
+			try {
+				final Method m = device.getClass().getMethod(
+						"createInsecureRfcommSocketToServiceRecord",
+						new Class[] { UUID.class });
+				return (BluetoothSocket) m.invoke(device, hc06uuid);
+			} catch (Exception e) {
+				Log.e("createBluetoothSocket",
+						"Could not create Insecure RFComm Connection", e);
+			}
+		}
+		return device.createRfcommSocketToServiceRecord(hc06uuid);
+	}
+	
+    @Override
+    public void onResume() {
 
 		// TODO: move to menu options
 		if (mBluetoothAdapter != null) {
@@ -165,8 +232,71 @@ public class BTRCMainActivity extends AndroidApplication {
 						BluetoothAdapter.ACTION_REQUEST_ENABLE);
 				startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
 			} else {
+				mFoundDevices = mBluetoothAdapter.getBondedDevices();
 			}
 		}
+
+    	super.onResume();
+    }
+    
+    @Override
+    public void onPause() {
+    	
+    	super.onPause();
+    }
+    
+	private void connect(String address) {
+
+		// Set up a pointer to the remote node using it's address.
+		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+
+		// Two things are needed to make a connection:
+		// A MAC address, which we got above.
+		// A Service ID or UUID. In this case we are using the
+		// UUID for SPP.
+
+		try {
+			mBluetoothSocket = createBluetoothSocket(device);
+		} catch (IOException e) {
+			// TODO
+			// errorExit("Fatal Error",
+			// "In onResume() and socket create failed: " + e.getMessage() +
+			// ".");
+		}
+
+		// Discovery is resource intensive. Make sure it isn't going on
+		// when you attempt to connect and pass your message.
+		mBluetoothAdapter.cancelDiscovery();
+
+		// Establish the connection. This will block until it connects.
+		// Log.d(TAG, "...Connecting...");
+		try {
+			mBluetoothSocket.connect();
+			// Log.d(TAG, "....Connection ok...");
+		} catch (IOException e) {
+			try {
+				mBluetoothSocket.close();
+			} catch (IOException e2) {
+				// TODO
+				// errorExit("Fatal Error",
+				// "In onResume() and unable to close socket during connection failure"
+				// + e2.getMessage() + ".");
+			}
+		}
+
+		// Create a data stream so we can talk to server.
+		// Log.d(TAG, "...Create Socket...");
+
+		mConnectedThread = new ConnectedThread(mBluetoothSocket);
+		mConnectedThread.start();
+	}
+	
+	// This one should be called to send data to the device
+	public void write(String message) {
+		
+		if (mConnectedThread != null) {
+			mConnectedThread.write(message);
+		}		
 	}
 
 	@Override
@@ -174,5 +304,68 @@ public class BTRCMainActivity extends AndroidApplication {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.btrcmain, menu);
 		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+
+		switch (item.getItemId()) {
+		case R.id.action_select:
+			// TODO: new dialog with device selection, call connect() if selected
+			return true;
+		default:
+		}
+		return true;
+
+	}
+	
+	private class ConnectedThread extends Thread {
+		private final InputStream mmInStream;
+		private final OutputStream mmOutStream;
+
+		public ConnectedThread(BluetoothSocket socket) {
+			InputStream tmpIn = null;
+			OutputStream tmpOut = null;
+
+			// Get the input and output streams, using temp objects because
+			// member streams are final
+			try {
+				tmpIn = socket.getInputStream();
+				tmpOut = socket.getOutputStream();
+			} catch (IOException e) {
+			}
+
+			mmInStream = tmpIn;
+			mmOutStream = tmpOut;
+		}
+
+		public void run() {
+			byte[] buffer = new byte[256]; // buffer store for the stream
+			int bytes; // bytes returned from read()
+
+			// Keep listening to the InputStream until an exception occurs
+			while (true) {
+				try {
+					// Read from the InputStream
+					bytes = mmInStream.read(buffer); // Get number of bytes and
+														// message in "buffer"
+					mHandler.obtainMessage(RECEIVE_MESSAGE, bytes, -1, buffer)
+							.sendToTarget(); // Send to message queue Handler
+				} catch (IOException e) {
+					break;
+				}
+			}
+		}
+
+		/* Call this from the main activity to send data to the remote device */
+		public void write(String message) {
+
+			byte[] msgBuffer = message.getBytes();
+			try {
+				mmOutStream.write(msgBuffer);
+			} catch (IOException e) {
+				// TODO
+			}
+		}
 	}
 }
