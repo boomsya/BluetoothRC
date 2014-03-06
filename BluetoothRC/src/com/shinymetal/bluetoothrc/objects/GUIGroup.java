@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.shinymetal.bluetoothrc.BTTransmitter;
 import com.shinymetal.bluetoothrc.BluetoothRC;
 
 public class GUIGroup
@@ -147,7 +148,8 @@ public class GUIGroup
 	@Override
 	public void act (float delta) {
 		
-		float angle = BluetoothRC.getInstance().getDirection();
+		BluetoothRC btRC = BluetoothRC.getInstance(); 
+		float angle = btRC.getDirection();
 		
 		if (angle != wheelRotation) {
 			
@@ -159,6 +161,28 @@ public class GUIGroup
 		// angle += angle > 0 ? -0.1 : 0.1;
 		// BluetoothRC.getInstance().setDirection(angle);
 		
+		BTTransmitter transmitter = btRC.getTransmitter();
+		
+		if (transmitter != null) {
+
+			String readData = transmitter.read();
+			if (readData != null && readData.length() > 0) {
+
+				// TODO: handle input data
+			}
+		}
+		float absAngle = Math.abs(angle);
+		int throttle = btRC.getThrottle();
+
+		if (absAngle > 90)
+			absAngle = 90;
+		String cmd = (angle > 0 ? "R" : "L") + (int) (absAngle / 10);
+		cmd += (throttle > 0 ? "F" : "B") + Math.abs(throttle);
+
+		// Gdx.app.log(BluetoothRC.LOG, "Sending cmd: " + cmd);
+		if (transmitter != null) {
+			transmitter.write(cmd); // 4 chars @60 fps = 240 bps !!!
+		}
 		super.act( delta );		
 	}
 	

@@ -35,7 +35,7 @@ import android.bluetooth.*;
 import android.content.DialogInterface;
 import android.content.Intent;
 
-public class BTRCMainActivity extends AndroidApplication {
+public class BTRCMainActivity extends AndroidApplication implements BTTransmitter {
 	
     private float[] mGravity;
     private float[] mMagnetic;
@@ -192,22 +192,16 @@ public class BTRCMainActivity extends AndroidApplication {
 			return;
 		}
 		
+		mGame.setTransmitter (this);		
 		mHandler = new Handler() {
 			public void handleMessage(android.os.Message msg) {
+				
 				switch (msg.what) {
+				
 				case RECEIVE_MESSAGE: // if receive massage
 					byte[] readBuf = (byte[]) msg.obj;
 					String strIncom = new String(readBuf, 0, msg.arg1); 
 					mStringBuilder.append(strIncom); // append string
-					int endOfLineIndex = mStringBuilder.indexOf("\n"); // determine the
-															// end-of-line
-					if (endOfLineIndex > 0) { // if end-of-line,
-						String sbprint = mStringBuilder.substring(0, endOfLineIndex); // extract
-																			// string
-						mStringBuilder.delete(0, mStringBuilder.length()); // and clear
-
-						// TODO: use text from Arduino
-					}
 					break;
 				}
 			};
@@ -243,16 +237,7 @@ public class BTRCMainActivity extends AndroidApplication {
 //			m2 = device.getClass().getMethod("setPin",
 //					new Class[] { byte[].class });
 //			m2.invoke(device, ar);
-//		} catch (IllegalAccessException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (IllegalArgumentException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (InvocationTargetException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (NoSuchMethodException e) {
+//		} catch (Exception e) {
 //			// TODO Auto-generated catch block
 //			e.printStackTrace();
 //		}
@@ -327,7 +312,7 @@ public class BTRCMainActivity extends AndroidApplication {
 	// This one should be called to send data to the device
 	public void write(String message) {
 		
-		if (mConnectedThread != null) {
+		if (mConnectedThread != null && mConnectedThread.isAlive()) {
 			mConnectedThread.write(message);
 		}		
 	}
@@ -427,17 +412,14 @@ public class BTRCMainActivity extends AndroidApplication {
 		}
 
 		public void run() {
-			byte[] buffer = new byte[256]; // buffer store for the stream
-			int bytes; // bytes returned from read()
+			byte[] buffer = new byte[256];
+			int bytes;
 
-			// Keep listening to the InputStream until an exception occurs
 			while (true) {
 				try {
-					// Read from the InputStream
-					bytes = mmInStream.read(buffer); // Get number of bytes and
-														// message in "buffer"
-					mHandler.obtainMessage(RECEIVE_MESSAGE, bytes, -1, buffer)
-							.sendToTarget(); // Send to message queue Handler
+					bytes = mmInStream.read(buffer);
+					mHandler.obtainMessage(RECEIVE_MESSAGE, bytes, -1, buffer).sendToTarget();
+					
 				} catch (IOException e) {
 					break;
 				}
@@ -454,5 +436,23 @@ public class BTRCMainActivity extends AndroidApplication {
 				// TODO
 			}
 		}
+	}
+
+	@Override
+	public String read() {
+		
+//		int endOfLineIndex = mStringBuilder.indexOf("\n");
+//		if (endOfLineIndex > 0) {
+//
+//			String sbprint = mStringBuilder.substring(0, endOfLineIndex); // extract
+//			mStringBuilder.delete(0, mStringBuilder.length()); // and clear
+//			
+//			return sbprint;
+//		}
+
+		if (mStringBuilder.length() > 0)
+			return mStringBuilder.toString();
+		
+		return null;
 	}
 }

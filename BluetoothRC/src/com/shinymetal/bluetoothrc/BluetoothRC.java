@@ -17,7 +17,10 @@ public class BluetoothRC extends Game {
 	private int mThrottle = 0;
     private float mDirection = (float) 0.0;
     private boolean mWheelIsDragged = false;
+    private BTTransmitter mTransmitter = null;
     
+    public void setTransmitter (BTTransmitter transmitter) { mTransmitter = transmitter; }
+    public BTTransmitter getTransmitter() { return mTransmitter; }
 	public void setDirection(float direction) {
 		
 		mDirection = direction;
