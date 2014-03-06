@@ -34,6 +34,8 @@ public class GUIGroup
     static final int SPD_MAX_FWD = 9;
     static final int SPD_MAX_RWD = 4;
     
+    private long mLastSendTime = System.currentTimeMillis();
+    
 	public GUIGroup () {
 		shapeRenderer = new ShapeRenderer ();
 
@@ -159,30 +161,33 @@ public class GUIGroup
 		
 		// centering spring
 		// angle += angle > 0 ? -0.1 : 0.1;
-		// BluetoothRC.getInstance().setDirection(angle);
+		// btRC.setDirection(angle);
 		
 		BTTransmitter transmitter = btRC.getTransmitter();
 		
-		if (transmitter != null) {
+		if (transmitter != null
+				&& System.currentTimeMillis() > mLastSendTime + 100) {
 
 			String readData = transmitter.read();
 			if (readData != null && readData.length() > 0) {
 
 				// TODO: handle input data
 			}
-		}
-		float absAngle = Math.abs(angle);
-		int throttle = btRC.getThrottle();
 
-		if (absAngle > 90)
-			absAngle = 90;
-		String cmd = (angle > 0 ? "R" : "L") + (int) (absAngle / 10);
-		cmd += (throttle > 0 ? "F" : "B") + Math.abs(throttle);
+			float absAngle = Math.abs(angle);
+			int throttle = btRC.getThrottle();
 
-		// Gdx.app.log(BluetoothRC.LOG, "Sending cmd: " + cmd);
-		if (transmitter != null) {
-			transmitter.write(cmd); // 4 chars @60 fps = 240 bps !!!
+			if (absAngle > 90)
+				absAngle = 90;
+
+			String cmd = (angle > 0 ? "R" : "L") + (int) (absAngle / 10);
+			cmd += (throttle > 0 ? "F" : "B") + Math.abs(throttle);
+
+			Gdx.app.log(BluetoothRC.LOG, "Sending cmd: " + cmd);
+			transmitter.write(cmd);
+			mLastSendTime = System.currentTimeMillis();
 		}
+		
 		super.act( delta );		
 	}
 	

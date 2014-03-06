@@ -53,11 +53,10 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
     
     private static final int REQUEST_ENABLE_BT = 0x100;
     
+    private static final boolean ENABLE_SENSOR = false;
+    
     // TODO: replace with actual HC-06 uuid (Bluetooth Serial SPP: 00001101-0000-1000-8000-00805f9b34fb)
     private static final UUID hc06uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    
-    private static final float kFilteringFactor = 0.01f;
-    private float accel[] = {0, 0, 0}; 
     
 	private SensorEventListener mSl = new SensorEventListener() {
 		@SuppressWarnings("deprecation")
@@ -77,41 +76,50 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
 				return;
 			}
 
+			final int axisSwap[][] = {
+					{ 1, -1, 0, 1 }, // ROTATION_0
+					{ -1, -1, 1, 0 }, // ROTATION_90
+					{ -1, 1, 0, 1 }, // ROTATION_180
+					{ 1, 1, 1, 0 } }; // ROTATION_270
+
+			final int[] as = axisSwap[((WindowManager) getSystemService(WINDOW_SERVICE))
+					.getDefaultDisplay().getOrientation()];
+			
 			if (mGravity != null) {
 				if (mMagnetic != null) {
+					
+			        float[] temp = new float[9];
+			        float[] R = new float[9];
+			        
+			        // Load rotation matrix into R
+			        SensorManager.getRotationMatrix(temp, null, mGravity, mMagnetic);
+			      
+			        // Remap to camera's point-of-view
+			        SensorManager.remapCoordinateSystem(temp,
+			        		SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, R);
+			      
+			        // Return the orientation values
+			        float[] values = new float[3];
+			        SensorManager.getOrientation(R, values);
+			      
+			        //Convert to degrees
+			        for (int i=0; i < values.length; i++) {
+			            Double degrees = (values[i] * 180) / Math.PI;
+			            values[i] = degrees.floatValue();
+			        }
 
-					// Log.d("SensorEventListener", "tilt1 " + getDirection() + " degrees");
-					if (!mGame.isWheelDragged())
-						mGame.setDirection(getDirection());
+					// Log.d("SensorEventListener", "tilt1 " + values[0] + " degrees");
+					if (!mGame.isWheelDragged() && ENABLE_SENSOR)
+						mGame.setDirection(values[0]);
 					
 				} else {
-					float[] adjustedValues = new float[3];
+					float adjustedValues = (float) as[0] * event.values[as[2]];
+					
+					float tilt = adjustedValues / SensorManager.GRAVITY_EARTH * 90;					
 
-					final int axisSwap[][] = {
-							{ 1, -1, 0, 1 }, // ROTATION_0
-							{ -1, -1, 1, 0 }, // ROTATION_90
-							{ -1, 1, 0, 1 }, // ROTATION_180
-							{ 1, 1, 1, 0 } }; // ROTATION_270
-
-					final int[] as = axisSwap[((WindowManager) getSystemService(WINDOW_SERVICE))
-							.getDefaultDisplay().getOrientation()];
-					
-					accel[0] = event.values[as[2]] * kFilteringFactor + accel[0] * (1.0f - kFilteringFactor);
-					// accel[1] = event.values[as[3]] * kFilteringFactor + accel[1] * (1.0f - kFilteringFactor);
-					// accel[2] = event.values[2] * kFilteringFactor + accel[2] * (1.0f - kFilteringFactor);
-					
-					adjustedValues[0] = (float) as[0] * event.values[as[2]];
-					// adjustedValues[1] = (float) as[1] * event.values[as[3]];
-					// adjustedValues[2] = event.values[2];
-					
-					float tilt = adjustedValues[0] / SensorManager.GRAVITY_EARTH * 90;					
-					// accel[0] = tilt * kFilteringFactor + accel[0] * (1.0f - kFilteringFactor);
-					// tilt -= accel[0]; 
-					
-					// Log.d("SensorEventListener", "tilt2 " + tilt + " degrees");
-					
+					// Log.d("SensorEventListener", "tilt2 " + tilt + " degrees");					
 					// TODO: Why do I need offset here?
-					if (!mGame.isWheelDragged())
+					if (!mGame.isWheelDragged() && ENABLE_SENSOR)
 						mGame.setDirection(tilt /* - 4*/);
 				}
 			}
@@ -122,32 +130,6 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
 			// Log.d("SensorEventListener", "onAccuracyChanged: " + sensor + ", accuracy: " + accuracy);
 		}
 	};
-	
-	private float getDirection()
-    {
-        float[] temp = new float[9];
-        float[] R = new float[9];
-        
-        // Load rotation matrix into R
-        SensorManager.getRotationMatrix(temp, null,
-                mGravity, mMagnetic);
-      
-        // Remap to camera's point-of-view
-        SensorManager.remapCoordinateSystem(temp,
-        		SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, R);
-      
-        // Return the orientation values
-        float[] values = new float[3];
-        SensorManager.getOrientation(R, values);
-      
-        //Convert to degrees
-        for (int i=0; i < values.length; i++) {
-            Double degrees = (values[i] * 180) / Math.PI;
-            values[i] = degrees.floatValue();
-        }
-
-        return values[0];      
-    }
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -221,26 +203,13 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
 						"createInsecureRfcommSocketToServiceRecord",
 						new Class[] { UUID.class });
 				return (BluetoothSocket) m.invoke(device, hc06uuid);
-				
-//				final Method m = device.getClass().getMethod(
-//						"createRfcommSocket", new Class[] { int.class });
-//				return (BluetoothSocket) m.invoke(device, 1);
 				    
 			} catch (Exception e) {
 				Log.e("createBluetoothSocket",
 						"Could not create Insecure RFComm Connection", e);
 			}
 		}
-//		byte[] ar = new byte[] { 0x31, 0x32, 0x33, 0x34 };
-//		Method m2 = null;
-//		try {
-//			m2 = device.getClass().getMethod("setPin",
-//					new Class[] { byte[].class });
-//			m2.invoke(device, ar);
-//		} catch (Exception e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+
 		return device.createRfcommSocketToServiceRecord(hc06uuid);
 	}
 	
@@ -429,10 +398,10 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
 		/* Call this from the main activity to send data to the remote device */
 		public void write(String message) {
 
-			byte[] msgBuffer = message.getBytes();
 			try {
+				byte[] msgBuffer = message.getBytes("US-ASCII");
 				mmOutStream.write(msgBuffer);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				// TODO
 			}
 		}
@@ -450,8 +419,12 @@ public class BTRCMainActivity extends AndroidApplication implements BTTransmitte
 //			return sbprint;
 //		}
 
-		if (mStringBuilder.length() > 0)
-			return mStringBuilder.toString();
+		if (mStringBuilder.length() > 0) {
+			
+			String sbprint = mStringBuilder.toString();
+			mStringBuilder.delete(0, mStringBuilder.length()); // and clear
+			return sbprint;
+		}
 		
 		return null;
 	}
