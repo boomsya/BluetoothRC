@@ -160,8 +160,10 @@ public class GUIGroup
 		}
 		
 		// centering spring
-		// angle += angle > 0 ? -0.1 : 0.1;
-		// btRC.setDirection(angle);
+		if (!btRC.isWheelDragged()) {
+			angle += angle > 0 ? -0.1 : 0.1;
+			btRC.setDirection(angle);
+		}
 		
 		BTTransmitter transmitter = btRC.getTransmitter();
 		
