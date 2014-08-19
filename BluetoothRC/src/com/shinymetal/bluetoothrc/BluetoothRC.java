@@ -16,8 +16,16 @@ public class BluetoothRC extends Game {
 	
 	private int mThrottle = 0;
     private float mDirection = (float) 0.0;
+    private boolean mToggleLight = false;
+    private boolean mToggleHorn = false;
     private boolean mWheelIsDragged = false;
     private BTTransmitter mTransmitter = null;
+    
+	public void toggleLight() { mToggleLight = !mToggleLight; };
+	public void toggleHorn() { mToggleHorn = !mToggleHorn; };
+	
+	public boolean getLight() { return mToggleLight; };
+	public boolean getHorn() { return mToggleHorn; };
     
     public void setTransmitter (BTTransmitter transmitter) { mTransmitter = transmitter; }
     public BTTransmitter getTransmitter() { return mTransmitter; }

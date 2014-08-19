@@ -24,6 +24,8 @@ public class GUIGroup
     private Actor spdHandle;
     private Actor wheelHandle;
     private Actor stopBtn;
+    private Actor hornBtn;
+    private Actor lightBtn;
     
     private float wheelRotation = BluetoothRC.getInstance().getDirection();
     private int throttle = 0;
@@ -145,6 +147,28 @@ public class GUIGroup
 			}
 		});
 		this.addActor(stopBtn);
+		
+		hornBtn = new Image(new Texture(Gdx.files.internal("graphics/pushredsm.png")));
+		hornBtn.setPosition(stopBtn.getX() - 10 - hornBtn.getWidth(), Gdx.graphics.getHeight() - hornBtn.getHeight() - 10);
+		hornBtn.addListener(new InputListener() {
+			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+				
+				BluetoothRC.getInstance().toggleHorn();
+				return super.touchDown(event, x, y, pointer, button);
+			}
+		});
+		this.addActor(hornBtn);
+
+		lightBtn = new Image(new Texture(Gdx.files.internal("graphics/pushgreensm.png")));
+		lightBtn.setPosition(hornBtn.getX() - 10 - lightBtn.getWidth(), Gdx.graphics.getHeight() - lightBtn.getHeight() - 10);
+		lightBtn.addListener(new InputListener() {
+			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+				
+				BluetoothRC.getInstance().toggleLight();
+				return super.touchDown(event, x, y, pointer, button);
+			}
+		});
+		this.addActor(lightBtn);
 	}
 		
 	@Override
@@ -184,6 +208,8 @@ public class GUIGroup
 
 			String cmd = (angle > 0 ? "R" : "L") + (int) (absAngle / 10);
 			cmd += (throttle > 0 ? "F" : "B") + Math.abs(throttle);
+			cmd += btRC.getHorn() ? "H" : "h";
+			cmd += btRC.getLight() ? "I" : "i";
 
 			Gdx.app.log(BluetoothRC.LOG, "Sending cmd: " + cmd);
 			transmitter.write(cmd);
